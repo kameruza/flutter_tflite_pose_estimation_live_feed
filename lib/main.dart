@@ -1,10 +1,10 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tflite/tflite.dart';
 import 'package:camera/camera.dart';
 
-List<CameraDescription> cameras;
+import 'cameras.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   cameras = await availableCameras();
@@ -22,20 +22,18 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
-  final String title;
+  MyHomePage({super.key});
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List _recognitions;
-  double _imageHeight;
-  double _imageWidth;
-  CameraImage img;
-  CameraController controller;
+  late List _recognitions;
+  late double _imageHeight;
+  late double _imageWidth;
+  late CameraImage img;
+  late CameraController controller;
   bool isBusy = false;
-
 
   @override
   void initState() {
@@ -54,7 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Future loadModel() async {
     Tflite.close();
     try {
-      String res;
+      String? res;
       res = await Tflite.loadModel(
         model: "assets/posenet_mv1_075_float_from_checkpoints.tflite",
         // useGpuDelegate: true,
@@ -73,10 +71,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       setState(() {
         controller.startImageStream((image) => {
-              if (!isBusy) {
-                isBusy = true,
-                img = image,
-                runModelOnFrame()}
+              if (!isBusy) {isBusy = true, img = image, runModelOnFrame()}
             });
       });
     });
@@ -85,14 +80,14 @@ class _MyHomePageState extends State<MyHomePage> {
   runModelOnFrame() async {
     _imageWidth = img.width + 0.0;
     _imageHeight = img.height + 0.0;
-    _recognitions = await Tflite.runPoseNetOnFrame(
+    _recognitions = (await Tflite.runPoseNetOnFrame(
       bytesList: img.planes.map((plane) {
         return plane.bytes;
       }).toList(),
       imageHeight: img.height,
       imageWidth: img.width,
       numResults: 2,
-    );
+    ))!;
     print(_recognitions.length);
     isBusy = false;
     setState(() {
@@ -102,9 +97,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   //TODO draw points
   List<Widget> renderKeypoints(Size screen) {
-    if (_recognitions == null) return [];
-    if (_imageHeight == null || _imageWidth == null) return [];
-
     double factorX = screen.width;
     double factorY = _imageHeight;
 
@@ -150,10 +142,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
         )));
 
-    if (img != null) {
-      stackChildren.addAll(renderKeypoints(size));
-    }
-
+    stackChildren.addAll(renderKeypoints(size));
+  
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.black,
